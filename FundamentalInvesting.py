@@ -4,104 +4,113 @@ from FundamentalInvesting_constants import *
 import pandas as pd
 
 
-def yahooKeyStats(stock, return_bool=False, print_results=True):
+def yahooKeyStats(stock, return_bool=False, verbal=True):
 
     # First open the webpage and pull all the source code.
     try:
         sourceCode = urllib.request.urlopen('http://finance.yahoo.com/q/ks?s='+stock).read()
-        try:
-
-            # Now try the first search string the PBR, then decode (urlopen will return
-            # a bytes representation) and use split to find where the PBR is.
-            search_str = pbr_strs[0]
-            pbr = sourceCode.decode().split(search_str)[1].split("</td>")[0]
-        except:
-            try:
-
-                # Try another string if the above fails.
-                search_str = pbr_strs[1]
-                pbr = sourceCode.decode().split(search_str)[1].split("</td>")[0]
-            except:
-                try:
-
-                    # Try yet another string if the above fails.
-                    search_str = pbr_strs[2]
-                    pbr = sourceCode.decode().split(search_str)[1].split("</td>")[0]
-                except:
-                    #print("Error: Can't find PBR search string.")
-                    pbr = None
-                    pass
-
-        # Now the same as the above, except for the PEG ratio.
-        try:
-            search_str = peg5_strs[0]
-            peg5 = sourceCode.decode().split(search_str)[1].split("</td>")[0]
-        except:
-            try:
-                search_str = peg5_strs[1]
-                peg5 = sourceCode.decode().split(search_str)[1].split("</td>")[0]
-            except:
-                #print("Error: Can't find PEG search string.")
-                peg5 = None
-                pass
-
-        # Now the same as the above, except for the PE 12 months ratio.
-        try:
-            search_str = pe12_strs[0]
-            pe12 = sourceCode.decode().split(search_str)[1].split("</td>")[0]
-        except:
-            try:
-                search_str = pe12_strs[0]
-                peg12 = sourceCode.decode().split(search_str)[1].split("</td>")[0]
-            except:
-                #print("Error: Can't find PE12 search string.")
-                pe12 = None
-                pass
-
-        # Now the same as the above, except for the DE (mrq) ratio.
-        try:
-            search_str = de_strs[0]
-            de = sourceCode.decode().split(search_str)[1].split("</td>")[0]
-        except:
-            try:
-                search_str = de_strs[1]
-                de = sourceCode.decode().split(search_str)[1].split("</td>")[0]
-            except:
-                try:
-                    search_str = de_strs[2]
-                    de = sourceCode.decode().split(search_str)[1].split("</td>")[0]
-                except:
-                    try:
-                        search_str = de_strs[3]
-                        de = sourceCode.decode().split(search_str)[1].split("</td>")[0]
-                    except:
-                        try:
-                            search_str = de_strs[4]
-                            de = sourceCode.decode().split(search_str)[1].split("</td>")[0]
-                        except:
-                            #print("Error: Can't find PE12 search string.")
-                            de = None
-                            pass
-
-        # If you want active feedback.
-        if print_results:
-            print(stock.upper() + ":")
-            print("  PBR        : {}".format(pbr))
-            print("  PEG (5 yrs): {}".format(peg5))
-            print("  PE (ttm)   : {}".format(pe12))
-            print("  DE (mrq)   : {}".format(de))
-
-        # If you want the results returned.
-        if return_bool:
-            return stock, pbr, peg5, pe12, de
     except:
+        print('Error opening source code.')
+        return stock, None, None, None, None
 
-        # Return None's if the above fails.
-        if return_bool:
-            return None, None, None, None, None
+    # Search process to get PBR. Works by getting progressively smaller chunks of strings.
+    try:
+        # First get the first 300 characters after the name.
+        chunk1 = sourceCode.decode().split('Price/Book')[1][:300]
+        # Expect the next chunk to start ta the second 'data-reactid'.
+        chunk2 = chunk1.split('data-reactid')[2]
+        # Then get the '>' right before the PBR number.
+        chunk3 = chunk2.split('>')[1]
+        # Finally cut it off at the '<' on the other side of the PBR number.
+        chunk4 = chunk3.split('<')[0]
+    except Exception as err:
+        if verbal:
+            print('PBR Error: {}'.format(err))
+        pbr = None
+    try:
+        pbr = float(chunk4)
+    except Exception as err:
+        if verbal:
+            print('PBR Error: {}'.format(err))
+        pbr = None
+
+    # Same process, now just for the trailing price/earnings ratio.
+    try:
+        chunk1 = sourceCode.decode().split('Trailing P/E')[1][:300]
+        chunk2 = chunk1.split('data-reactid')[2]
+        chunk3 = chunk2.split('>')[1]
+        chunk4 = chunk3.split('<')[0]
+    except Exception as err:
+        if verbal:
+            print('TPE Error: {}'.format(err))
+        tpe = None
+    try:
+        tpe = float(chunk4)
+    except Exception as err:
+        if verbal:
+            print('TPE Error: {}'.format(err))
+        tpe = None
+
+    # Same process, now just for the debt/equity ratio.
+    try:
+        chunk1 = sourceCode.decode().split('Total Debt/Equity')[1][:300]
+        chunk2 = chunk1.split('data-reactid')[2]
+        chunk3 = chunk2.split('>')[1]
+        chunk4 = chunk3.split('<')[0]
+    except Exception as err:
+        if verbal:
+            print('DE Error: {}'.format(err))
+        de = None
+    try:
+        de = float(chunk4)
+    except Exception as err:
+        if verbal:
+            print('DE Error: {}'.format(err))
+        de = None
+
+    # Same process, now just for the PEG ratio.
+    try:
+        chunk1 = sourceCode.decode().split('PEG Ratio (5 yr expected)')[1][:300]
+        chunk2 = chunk1.split('data-reactid')[2]
+        chunk3 = chunk2.split('>')[1]
+        chunk4 = chunk3.split('<')[0]
+    except Exception as err:
+        if verbal:
+            print('PEG Error: {}'.format(err))
+        peg = None
+    try:
+        peg = float(chunk4)
+    except Exception as err:
+        if verbal:
+            print('PEG Error: {}'.format(err))
+        peg = None
+
+    # Print out results if wanted.
+    if verbal:
+        print(stock.upper() + ":")
+        if pbr == None:
+            print("  Price/Book  : N/A")
+        else:
+            print("  Price/Book  : {}".format(pbr))
+        if tpe == None:
+            print("  Trailing P/E: N/A")
+        else:
+            print("  Trailing P/E: {}".format(tpe))
+        if de == None:
+            print("  Debt/Equity:  N/A")
+        else:
+            print("  Debt/Equity:  {}".format(de))
+        if peg == None:
+            print("  P/E Growth:   N/A")
+        else:
+            print("  P/E Growth:   {}".format(peg))
+
+    # Return results if wanted.
+    if return_bool:
+        return stock, pbr, tpe, de, peg
 
 
-def screen(index='sp500', pbr_scr = 1.0, peg_scr = 1.0, pe12_scr = 1.0):
+def screen(index='sp500', pbr_scr = 1.0, peg_scr = 1.0, tpe_scr = 1.0):
     count = 0
 
     if index == 'sp500':
@@ -117,32 +126,28 @@ def screen(index='sp500', pbr_scr = 1.0, peg_scr = 1.0, pe12_scr = 1.0):
 
     for stonk in tickers:
 
+        print("Now serving {}/{}: {}".format(count, len(tickers), stonk))
         # Small delay.
         time.sleep(0.1)
-        print("{:4}".format(stonk.upper()))
-        stock, pbr, peg, pe12, de = yahooKeyStats(stonk, True, False)
         try:
-            if stock == None:
-                #print("  Could not find data.")
-                #pbr = 999
-                print("\033[F", end="")
-            elif float(pbr) < pbr_scr and float(peg) < peg_scr and float(pe12) < pe12_scr:
-                print("  PBR     : {}".format(pbr))
-                print("  PEG     : {}".format(peg))
-                print("  PE (ttm): {}".format(pe12))
-                print("  DE (mrq): {}".format(de))
-                df = df.append({'Stock':stock, 'PBR':pbr, 'PEG':peg, 'PE (ttm)':pe12, 'DE (mrq)':de}, ignore_index=True)
-                df = df[['Stock', 'PBR', 'PEG', 'PE (ttm)', 'DE (mrq)']]  # Sort the columns.
-                continue
+            stock, pbr, tpe, de, peg = yahooKeyStats(stonk, True, False)
+        except:
+            print('Error: Could not retrieve stats for {}'.format(stonk))
+            continue
+
+        # If a None was returned, then we don't want that stock anyways.
+        try:
+            if float(pbr) < pbr_scr and float(peg) < peg_scr and float(tpe) < tpe_scr:
+                yahooKeyStats(stonk, False, True)
+                df = df.append({'Stock':stock, 'PBR':pbr, 'PE (ttm)':tpe, 'PEG':peg, 'DE (mrq)':de}, ignore_index=True)
+                df = df[['Stock', 'PBR', 'PE (ttm)', 'PEG', 'DE (mrq)']]  # Sort the columns.
             else:
                 print("\033[F", end="")
-
-            if float(pbr) and float(peg) and float(pe12):
-                count +=1
         except:
-            #print("  Error: Did not return correct PBR type.")
-            #print("\033[F", end="")
-            pass
+            print("\033[F", end="")
+
+        count += 1
+
 
     print("Retrieved complete data for {}/{} stocks.".format(count, len(tickers)))
 
