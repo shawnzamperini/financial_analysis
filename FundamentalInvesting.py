@@ -86,6 +86,13 @@ class Ticker:
 def screen(index='djia', pbr_scr=9999, pe_scr=9999, de_scr=9999, divyield_scr=9999, pass_all=False):
     """
     Screen function to screen stocks according to desired ratios.
+
+    pbr_scr:      Screening value for the price/book ratio.
+    pe:           Price/Earning ratio screen.
+    de:           Debt/Equity ratio screen.
+    divyield_scr: Dividend yield screen as percent.
+    pass_all:     Set to true if ticker must pass every screen test. False it will
+                    only need to pass one of the tests.
     """
     if index == 'sp500':
         ticker_symbols = constants.sp500
@@ -188,7 +195,8 @@ def screen(index='djia', pbr_scr=9999, pe_scr=9999, de_scr=9999, divyield_scr=99
                            format_stat(ticker.key_stats['PBR']),
                            format_stat(ticker.key_stats['PE12']),
                            format_stat(ticker.key_stats['DE']),
-                           format_stat(ticker.key_stats['DIVYIELD'])))
+                           format_divrateyield(ticker.key_stats['DIVRATE'],
+                                               ticker.key_stats['DIVYIELD'])))
             else:
                 if pbr_pass or pe_pass or de_pass:
                     print('\r{:6s} | {:10s} | {:14s} | {:11s} | {:17s}'.format(
