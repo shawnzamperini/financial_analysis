@@ -1,7 +1,13 @@
 import FundamentalInvesting_constants as constants
 import time
 import urllib
+from bs4 import BeautifulSoup
+import numpy as np
 
+fundamentals = np.array(['Price/Book', 'Trailing P/E',
+                         'PEG Ratio (5 yr expected)', 'Total Debt/Equity',
+                         'Trailing Annual Dividend Rate',
+                         'Trailing Annual Dividend Yield'])
 
 class Ticker:
     """
@@ -27,63 +33,62 @@ class Ticker:
                                'DIVRATE':  constants.divrate_strs,
                                'DIVYIELD': constants.divyield_strs}
 
+
     def query_yahoo(self, debug=False):
         """
         Method to query Yahoo! Finance for the key ratios.
 
         debug: Set to True to print out info and see where it fails.
         """
-        try: # (1)
+        try:
             # Load all the source code.
-            source_code = urllib.request.urlopen('http://finance.yahoo.com/q/ks?s='+self.symbol).read()
+            source_code = urllib.request.urlopen('http://finance.yahoo.com/quote/' + self.symbol + '/key-statistics?p='+self.symbol).read()
             self.source_code = source_code
+            self.soup = BeautifulSoup(self.source_code, features='lxml')
             if debug:
                 print(self.symbol.upper() + ' source code loaded.')
 
-            # Search through each key stat desired.
-            for search_string_name, search_string_options in self.search_strings.items():
+            # Try and locate each fundamental one at a time.
+            try:
+
+                # Dictionary to hold results.
+                self.fund_dict = {}
+
+                # They are nestled under td tags, so get all those.
+                tds = self.soup.find_all('td')
+
+                # Go through each fundamental.
+                for fund in fundamentals:
+
+                    # Go through each td tag looking for ones that have a
+                    # span child.
+                    for i in range(0, len(tds)):
+                        td = tds[i]
+                        if len(td.findChildren('span')) > 0:
+
+                            # See if this span child has the matching string.
+                            if td.findChildren('span')[0].string == fund:
+
+                                # The fund will then be in the following td tag.
+                                fund_value = tds[i+1].string
+                                self.fund_dict[fund] = fund_value
+
+                if self.fund_dict == {}:
+                    raise Exception
+
+            except Exception as e:
                 if debug:
-                    print('  Searching for ' + search_string_name + '...')
-                try: # (2)
-                    option_count = 1
+                    print('Error: ' + str(e))
+                return 'Fail'
 
-                    # Go one search string at a time until you run out.
-                    for option in search_string_options:
-                        try: # (3)
-
-                            # Will fail if either the number is not found (the [1]
-                            # after split will fail) or returns a N/A (the float()
-                            # will fail). Remove any commas with replace.
-                            key_stat = float(source_code.decode().split(option)[1].split("</td>")[0].replace(',', '').replace('%', ''))
-                            if debug:
-                                print('    Option #(' + str(option_count) + '/'
-                                      + str(len(search_string_options)) + '): '
-                                      + str(key_stat) + '.')
-
-                            # Store the value in the Ticker object's dictionary.
-                            self.key_stats[search_string_name] = key_stat
-                            break
-                        except Exception as e: # (3)
-                            if debug:
-                                #print('    Error (1):' + str(e))
-                                print('    Option #(' + str(option_count) + '/'
-                                      + str(len(search_string_options)) + '): Fail.')
-                            option_count += 1
-                except Exception as e: # (2)
-                    if debug:
-                        #print('    Error (2)' + str(e))
-                        print('    Could not find ' + search_string_name)
-                    else:
-                        pass
-
-        except Exception as e: # (1)
+        except Exception as e:
             if debug:
                 #print('    Error (3)' + str(e))
                 print("Error: Could not load source code from Yahoo.")
             return 'Fail'
 
 
-def screen(index='djia', pbr_scr=9999, pe_scr=9999, de_scr=9999, divyield_scr=9999, pass_all=False):
+def screen(index='djia', pbr_scr=9999, pe_scr=9999, de_scr=9999, divyield_scr=9999, pass_all=False, pass_na=True):
     """
     Screen function to screen stocks according to desired ratios.
 
@@ -93,12 +98,15 @@ def screen(index='djia', pbr_scr=9999, pe_scr=9999, de_scr=9999, divyield_scr=99
     divyield_scr: Dividend yield screen as percent.
     pass_all:     Set to true if ticker must pass every screen test. False it will
                     only need to pass one of the tests.
+    pass_na:      If True, considers an N/A a pass. Useful if you aren't sure
+                    the data is being retrieved (if it is being retrieved, then
+                    N/A on say PE ratio means negative earnings).
     """
     if index == 'sp500':
         ticker_symbols = constants.sp500
         index = 'S&P 500'
     elif index == 'ru3000':
-        ticker_symbols = constants.ru3000
+        ticker_symbols = constants.russell3000
         index = 'Russell 3000'
     elif index == 'djia':
         ticker_symbols = constants.djia
@@ -144,33 +152,45 @@ def screen(index='djia', pbr_scr=9999, pe_scr=9999, de_scr=9999, divyield_scr=99
 
             # Boolean for each test. Nones (i.e. N/A) will pass to leave it up
             # to the user's discretion. First Price/Book.
-            if ticker.key_stats['PBR'] == None:
-                pbr_pass = True
-            elif ticker.key_stats['PBR'] < pbr_scr:
+            if ticker.fund_dict[fundamentals[0]] == 'N/A':
+                if pass_na:
+                  pbr_pass = True
+                else:
+                  pbr_pass = False
+            elif float(ticker.fund_dict[fundamentals[0]].replace(',','')) < pbr_scr:
                 pbr_pass = True
             else:
                 pbr_pass = False
 
             # Price/Earnings (ttm).
-            if ticker.key_stats['PE12'] == None:
-                pe_pass = True
-            elif ticker.key_stats['PE12'] < pe_scr:
+            if ticker.fund_dict[fundamentals[1]] == 'N/A':
+                if pass_na:
+                  pe_pass = True
+                else:
+                  pe_pass = False
+            elif float(ticker.fund_dict[fundamentals[1]].replace(',','')) < pe_scr:
                 pe_pass = True
             else:
                 pe_pass = False
 
             # Debt/Equity.
-            if ticker.key_stats['DE'] == None:
-                de_pass = True
-            elif ticker.key_stats['DE'] < de_scr:
+            if ticker.fund_dict[fundamentals[3]] == 'N/A':
+                if pass_na:
+                  de_pass = True
+                else:
+                  de_pass = False
+            elif float(ticker.fund_dict[fundamentals[3]].replace(',','')) < de_scr:
                 de_pass = True
             else:
                 de_pass = False
 
             # Dividend yield.
-            if ticker.key_stats['DIVYIELD'] == None:
-                divyield_pass = True
-            elif ticker.key_stats['DIVYIELD'] < divyield_scr:
+            if ticker.fund_dict[fundamentals[4]] == 'N/A':
+                if pass_na:
+                  divyield_pass = True
+                else:
+                  divyield_pass = False
+            elif float(ticker.fund_dict[fundamentals[4]].replace(',','')) < divyield_scr:
                 divyield_pass = True
             else:
                 divyield_pass = False
@@ -192,20 +212,20 @@ def screen(index='djia', pbr_scr=9999, pe_scr=9999, de_scr=9999, divyield_scr=99
                 if pbr_pass and pe_pass and de_pass:
                     print('\r{:6s} | {:10s} | {:14s} | {:11s} | {:17s}'.format(
                            ticker.symbol,
-                           format_stat(ticker.key_stats['PBR']),
-                           format_stat(ticker.key_stats['PE12']),
-                           format_stat(ticker.key_stats['DE']),
-                           format_divrateyield(ticker.key_stats['DIVRATE'],
-                                               ticker.key_stats['DIVYIELD'])))
+                           ticker.fund_dict[fundamentals[0]], # PBR
+                           ticker.fund_dict[fundamentals[1]], # PE
+                           ticker.fund_dict[fundamentals[3]], # DE
+                           ticker.fund_dict[fundamentals[4]], # Div. Rate
+                           ticker.fund_dict[fundamentals[5]])) # Div. Yield
             else:
                 if pbr_pass or pe_pass or de_pass:
-                    print('\r{:6s} | {:10s} | {:14s} | {:11s} | {:17s}'.format(
+                    print('\r{:6s} | {:10s} | {:14s} | {:11s} | {:5s} ({:5s})'.format(
                            ticker.symbol,
-                           format_stat(ticker.key_stats['PBR']),
-                           format_stat(ticker.key_stats['PE12']),
-                           format_stat(ticker.key_stats['DE']),
-                           format_divrateyield(ticker.key_stats['DIVRATE'],
-                                               ticker.key_stats['DIVYIELD'])))
+                           ticker.fund_dict[fundamentals[0]], # PBR
+                           ticker.fund_dict[fundamentals[1]], # PE
+                           ticker.fund_dict[fundamentals[3]], # DE
+                           ticker.fund_dict[fundamentals[4]], # Div. Rate
+                           ticker.fund_dict[fundamentals[5]])) # Div. Yield
 
             count += 1
 
