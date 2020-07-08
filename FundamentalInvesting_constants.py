@@ -7,7 +7,7 @@ djia = ['MMM', 'AXP', 'AAPL', 'BA', 'CAT', 'CVX', 'CSCO', 'KO', 'DWDP', 'XOM',
         'PFE', 'PG', 'TRV', 'UNH', 'UTX', 'VZ', 'V', 'WMT', 'WBA', 'DIS']
 
 # Filename of most recent S&P 500 from Wikipedia, copy/pasted into txt file.
-sp500_filename = 'sp500_060118.txt'
+sp500_filename = 'sp500_050820.txt'
 sp500 = []
 with open(sp500_filename) as f:
     for line in f:
