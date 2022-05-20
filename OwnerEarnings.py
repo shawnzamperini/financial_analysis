@@ -33,17 +33,17 @@ class OwnerEarnings:
         # data organizing things. Have a couple options for the file names just
         # depending if I want to name them something clean or stick with what
         # Yahoo gives me.
-        income_path  = '/mnt/c/Users/Shawn/Documents/financial_statements/' + \
+        income_path  = '/mnt/c/Users/shawn/Documents/financial_statements/' + \
                        '{}_income.csv'.format(self.ticker)
-        balance_path = '/mnt/c/Users/Shawn/Documents/financial_statements/' + \
+        balance_path = '/mnt/c/Users/shawn/Documents/financial_statements/' + \
                        '{}_balance.csv'.format(self.ticker)
-        cash_path    = '/mnt/c/Users/Shawn/Documents/financial_statements/' + \
+        cash_path    = '/mnt/c/Users/shawn/Documents/financial_statements/' + \
                        '{}_cash.csv'.format(self.ticker)
-        income_path2  = '/mnt/c/Users/Shawn/Documents/financial_statements/' + \
+        income_path2  = '/mnt/c/Users/shawn/Documents/financial_statements/' + \
                        '{}_annual_financials.csv'.format(self.ticker.upper())
-        balance_path2 = '/mnt/c/Users/Shawn/Documents/financial_statements/' + \
+        balance_path2 = '/mnt/c/Users/shawn/Documents/financial_statements/' + \
                        '{}_annual_balance-sheet.csv'.format(self.ticker.upper())
-        cash_path2    = '/mnt/c/Users/Shawn/Documents/financial_statements/' + \
+        cash_path2    = '/mnt/c/Users/shawn/Documents/financial_statements/' + \
                        '{}_annual_cash-flow.csv'.format(self.ticker.upper())
 
         # Load in and swap index with columns.
